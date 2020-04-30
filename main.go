@@ -43,7 +43,12 @@ func main() {
 		}
 
 		d := createDistanceMatrix(*problemSize, time.Now().UnixNano())
+
+		start := time.Now()
 		betteExhaustiveSearch(0, *problemSize, d)
+		//parallelExhaustiveSearch(32, 0, *problemSize, d)
+		end := time.Now()
+		fmt.Println("Took ", end.Sub(start).Seconds(), "s")
 	}
 }
 

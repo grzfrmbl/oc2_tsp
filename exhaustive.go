@@ -70,6 +70,87 @@ func betteExhaustiveSearch(src, n int, dist [][]int) {
 	fmt.Println("shortest path is ", path, "len", shortest)
 }
 
+// Do not preallocate all possible paths, be merciful to your memory.
+func parallelExhaustiveSearch(workerCnt, src, n int, dist [][]int) {
+	fmt.Println("parallel exhaustive search, there are ", fac(n-1), " paths to check")
+	fmt.Println(workerCnt, " workers started")
+
+	var path []int
+	var shortest = math.MaxInt32
+
+	// Fancy
+	//uiprogress.Start()                   // start rendering
+	//bar := uiprogress.AddBar(fac(n - 1)) // Add a new bar
+	// optionally, append and prepend completion and elapsed time
+	//bar.AppendCompleted()
+	// bar.PrependElapsed()
+	//bar.AppendElapsed()
+
+	// Indices without/start/end
+	left := sliceWithoutSrc(src, n)
+
+	//startWorkers
+	in := permutations(left)
+
+	outs := make([]chan []int, workerCnt)
+	for i:=0; i<workerCnt; i++ {
+		outs[i] = exhaustiveWorker(i, src, n, dist, in)
+	}
+
+	for i:=0; i<workerCnt; i++ {
+		short := <- outs[i]	//blocking, unbuffered out chan
+		d := calcPathDist(short, dist)
+		if d < shortest {
+			shortest = d
+			path = short
+		}
+	}
+
+	fmt.Println("shortest path is ", path, "len", shortest)
+}
+
+
+func exhaustiveWorker(worker, src, n int, dist [][]int, in <-chan []int) (out chan []int) {
+	out = make(chan []int, 0)
+
+	go func() {
+
+		shortest := math.MaxInt32
+		var path []int
+
+		cnt := 0
+		for perm := range in {
+			cnt++
+			//if cnt % 1000 == 0 {
+				//bar.Incr()
+			//}
+
+			// Make a path
+			a := make([]int, n+1)
+			a[0] = src
+			a[n] = src
+			k := 1
+			for i := 0; i < len(perm); i++ {
+				a[k] = perm[i]
+				k++
+			}
+
+			// Check it
+			d := calcPathDist(a, dist)
+			if d < shortest {
+				shortest = d
+				path = a
+			}
+		}
+
+		out <- path
+		fmt.Println("shortest path worker ", worker, " is ", path, "len", shortest)
+	}()
+
+	return out
+}
+
+
 // This does work, but since all possible paths are generated beforehand
 // we may run into a little RAM overflow if the problem is too big...
 // In my case (32gb) if n>13
