@@ -3,20 +3,22 @@ package main
 import (
 	"fmt"
 	"math"
+	"strconv"
+	"time"
 
 	"github.com/gosuri/uiprogress"
 )
 
-// 1: [0,1,2,0]
-// 2: 0210
-
+// First try, overflows memory on large problems
 func exhaustiveSearch(src, n int, dist [][]int) {
 	fmt.Println("exhaustive search, there are ", fac(n-1), " paths to check")
 
 	perms := genPermutations(src, n)
 
-	var path []int
-	var shortest int = math.MaxInt32
+	var (
+		path     []int
+		shortest int = math.MaxInt32
+	)
 
 	for _, perm := range perms {
 		// Check if path ist shorter than path
@@ -33,17 +35,24 @@ func exhaustiveSearch(src, n int, dist [][]int) {
 func betteExhaustiveSearch(src, n int, dist [][]int) {
 	fmt.Println("better exhaustive search, there are ", fac(n-1), " paths to check")
 
-	var path []int
-	var shortest int = math.MaxInt32
+	var (
+		path         []int
+		shortest     int = math.MaxInt32
+		shortestTemp int
+		a            = make([]int, n+1)
+		rate         float64
+		tLeft        float64
+	)
 
-	// Fancy
-	uiprogress.Start()                   // start rendering
-	bar := uiprogress.AddBar(fac(n - 1)) // Add a new bar
-
-	// optionally, append and prepend completion and elapsed time
+	// Fancy progressbar
+	uiprogress.Start()
+	bar := uiprogress.AddBar(fac(n - 1))
 	bar.AppendCompleted()
-	// bar.PrependElapsed()
-	bar.AppendElapsed()
+	bar.PrependElapsed()
+	bar.AppendFunc(func(b *uiprogress.Bar) string {
+		tLeft = float64(bar.Total-bar.Current()) / rate
+		return "paths/s " + strconv.FormatFloat(rate, 'f', 2, 64) + " left " + time.Duration(tLeft*1000000000).String()
+	})
 
 	// Indices without/start/end
 	left := sliceWithoutSrc(src, n)
@@ -52,184 +61,29 @@ func betteExhaustiveSearch(src, n int, dist [][]int) {
 		bar.Incr()
 
 		// Make a path
-		a := make([]int, n+1)
+
 		a[0] = src
 		a[n] = src
-		k := 1
+
 		for i := 0; i < len(perm); i++ {
-			a[k] = perm[i]
-			k++
+			a[i+1] = perm[i]
 		}
 
 		// Check it
-		d := calcPathDist(a, dist)
-		if d < shortest {
-			shortest = d
+
+		shortestTemp = calcPathDist(a, dist)
+		if shortestTemp < shortest {
+			shortest = shortestTemp
 			path = a
 		}
 
-	}
-
-	fmt.Println("shortest path is ", path, "len", shortest)
-}
-
-//uses parallel permutator, otherwise identical to betteExhaustiveSearch
-func betteExhaustiveSearch2(src, n int, dist [][]int) {
-	fmt.Println("better exhaustive search, there are ", fac(n-1), " paths to check")
-
-	var path []int
-	var shortest int = math.MaxInt32
-
-	// Fancy
-	uiprogress.Start()                   // start rendering
-	bar := uiprogress.AddBar(fac(n - 1)) // Add a new bar
-
-	// optionally, append and prepend completion and elapsed time
-	bar.AppendCompleted()
-	// bar.PrependElapsed()
-	bar.AppendElapsed()
-
-	// Indices without/start/end
-	left := sliceWithoutSrc(src, n)
-
-	for perm := range parallelPermutations(left, 20) {
-		bar.Incr()
-
-		// Make a path
-		a := make([]int, n+1)
-		a[0] = src
-		a[n] = src
-		k := 1
-		for i := 0; i < len(perm); i++ {
-			a[k] = perm[i]
-			k++
-		}
-
-		// Check it
-		d := calcPathDist(a, dist)
-		if d < shortest {
-			shortest = d
-			path = a
-		}
-
-	}
-
-	fmt.Println("shortest path is ", path, "len", shortest)
-}
-
-//runs fastest if workerCnt==1 :(
-func parallelExhaustiveSearch(workerCnt, src, n int, dist [][]int) {
-	fmt.Println("parallel exhaustive search, there are ", fac(n-1), " paths to check")
-	fmt.Println(workerCnt, " workers started")
-
-	var path []int
-	var shortest = math.MaxInt32
-
-	// Fancy
-	//uiprogress.Start()                   // start rendering
-	//bar := uiprogress.AddBar(fac(n - 1)) // Add a new bar
-	// optionally, append and prepend completion and elapsed time
-	//bar.AppendCompleted()
-	// bar.PrependElapsed()
-	//bar.AppendElapsed()
-
-	// Indices without/start/end
-	left := sliceWithoutSrc(src, n)
-
-	//startWorkers
-	in := parallelPermutations(left, workerCnt*2)
-
-	outs := make([]chan []int, workerCnt)
-	for i := 0; i < workerCnt; i++ {
-		outs[i] = exhaustiveWorker(i, src, n, dist, in)
-	}
-
-	for i := 0; i < workerCnt; i++ {
-		short := <-outs[i] //blocking, unbuffered out chan
-		d := calcPathDist(short, dist)
-		if d < shortest {
-			shortest = d
-			path = short
+		if bar.Current()%1000 == 0 {
+			rate = float64(bar.Current()) / time.Since(bar.TimeStarted).Seconds()
+			// fmt.Println("current paths/s", rate, time.Since(bar.TimeStarted).Seconds())
 		}
 	}
 
-	fmt.Println("shortest path is ", path, "len", shortest)
-}
-func exhaustiveWorker(worker, src, n int, dist [][]int, in <-chan []int) (out chan []int) {
-	out = make(chan []int, 0)
-
-	go func() {
-
-		shortest := math.MaxInt32
-		var path []int
-
-		cnt := 0
-		for perm := range in {
-			cnt++
-			if cnt%1000000 == 0 && worker == 0 {
-				//bar.Incr()
-				fmt.Println(len(in))
-			}
-
-			// Make a path
-			a := make([]int, n+1)
-			a[0] = src
-			a[n] = src
-
-			copy(a[1:], perm)
-
-			// Check it
-			d := calcPathDist(a, dist)
-			if d < shortest {
-				shortest = d
-				path = a
-			}
-		}
-
-		out <- path
-		fmt.Println("shortest path worker ", worker, " is ", path, "len", shortest)
-	}()
-
-	return out
-}
-
-func parallelExhaustiveSearch2(workerCnt, src, n int, dist [][]int) {
-	fmt.Println("parallel exhaustive search, there are ", fac(n-1), " paths to check")
-	fmt.Println(workerCnt, " workers started")
-
-	//c chan []int, inputs []int
-	inputs := sliceWithoutSrc(src, n)
-
-	c := make([]chan []int, len(inputs))
-
-	for i := 0; i < len(inputs); i++ {
-		c[i] = make(chan []int)
-
-		temp := make([]int, len(inputs)-1)
-		copy(temp, inputs[:i])
-		copy(temp[i:], inputs[i+1:])
-
-		go func(t []int, ou chan []int, in int) {
-			permutate3(ou, t, in, dist)
-		}(temp, c[i], inputs[i])
-	}
-
-	var path []int
-	var shortest = math.MaxInt32
-
-	for i := 0; i < len(inputs); i++ {
-		aChan := c[i]
-		aPath := <-aChan
-		d := calcPathDist(aPath, dist)
-		if d < shortest {
-			shortest = d
-			path = aPath
-		}
-	}
-
-	fmt.Println("shortest path is ", path, "len", shortest)
-
-	return
+	fmt.Println("shortest path is ", path, "len", shortest," took ",time.Since(bar.TimeStarted))
 }
 
 // This does work, but since all possible paths are generated beforehand
@@ -325,7 +179,7 @@ func permutateParallel(c chan []int, inputs []int) {
 		copy(temp, inputs[:i])
 		copy(temp[i:], inputs[i+1:])
 
-		//fmt.Println(temp, i)
+		// fmt.Println(temp, i)
 
 		go permutate2(c, temp, inputs[i], finisher)
 	}

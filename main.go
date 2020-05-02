@@ -33,12 +33,6 @@ func main() {
 
 	flag.Parse()
 
-	d := testPar()
-	s := time.Now()
-	betteExhaustiveSearch(0, len(d[0]), d)
-	fmt.Println("standard time is ",time.Since(s))
-	return
-
 	if *testFlag != "" {
 		a := loadTestMatrix(*testFlag)
 		betteExhaustiveSearch(0, len(a[0]), a)
@@ -49,14 +43,7 @@ func main() {
 		}
 
 		d := createDistanceMatrix(*problemSize, time.Now().UnixNano())
-
-		start := time.Now()
-		//betteExhaustiveSearch(0, *problemSize, d)
-		//betteExhaustiveSearch2(0, *problemSize, d)
-		//parallelExhaustiveSearch(4, 0, *problemSize, d)
-		parallelExhaustiveSearch2(4, 0, *problemSize, d)
-		end := time.Now()
-		fmt.Println("Took ", end.Sub(start).Seconds(), "s")
+		betteExhaustiveSearch(0, *problemSize, d)
 	}
 }
 
