@@ -10,26 +10,14 @@ import (
 	"time"
 )
 
-// 	Test
-// 	T	N	M
-// T	0	7	8
-// N	7	0	4
-// M	8	4	0
-//
-//  Start T    7    4    8
-//          T -> N -> M -> T
-// 	       8    4    7
-//          T -> M -> N -> T
-//
-
 const (
-	MAX_DIST = 10
+	MAX_DIST = 1000
 	MIN_DIST = 1
 )
 
 func main() {
-	testFlag := flag.String("test", "", "")
-	problemSize := flag.Int("n", 0, "")
+	testFlag := flag.String("data", "", "Path to predefined distance matrix.")
+	problemSize := flag.Int("n", 0, "Number of cities used.")
 
 	flag.Parse()
 

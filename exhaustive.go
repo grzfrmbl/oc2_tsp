@@ -10,6 +10,7 @@ import (
 )
 
 // First try, overflows memory on large problems
+// since all permutations are created and stored in memory.
 func exhaustiveSearch(src, n int, dist [][]int) {
 	fmt.Println("exhaustive search, there are ", fac(n-1), " paths to check")
 
@@ -33,8 +34,10 @@ func exhaustiveSearch(src, n int, dist [][]int) {
 
 // Do not preallocate all possible paths, be merciful to your memory.
 func betteExhaustiveSearch(src, n int, dist [][]int) {
-	fmt.Println("better exhaustive search, there are ", fac(n-1), " paths to check")
+	fmt.Println("better exhaustive search, there are ", fac(n-1), " paths to check \nsearching ...\n")
 
+	// These variables are allocated here to increase performance.
+	// If we do this every iteration the GC strain is quite noticeable.
 	var (
 		path         []int
 		shortest     int = math.MaxInt32
@@ -44,15 +47,19 @@ func betteExhaustiveSearch(src, n int, dist [][]int) {
 		tLeft        float64
 	)
 
-	// Fancy progressbar
+	// Uhhh yes a fancy progressbar
 	uiprogress.Start()
 	bar := uiprogress.AddBar(fac(n - 1))
-	bar.AppendCompleted()
-	bar.PrependElapsed()
-	bar.AppendFunc(func(b *uiprogress.Bar) string {
+	bar.Width = 42
+	// bar.PrependElapsed()
+	bar.PrependFunc(func(b *uiprogress.Bar) string {
 		tLeft = float64(bar.Total-bar.Current()) / rate
-		return "paths/s " + strconv.FormatFloat(rate, 'f', 2, 64) + " left " + time.Duration(tLeft*1000000000).String()
+		return "\tpaths/s\t\t" + strconv.FormatFloat(rate, 'f', 0, 64) + "\n" +
+		    "\ttime left\t" + time.Duration(tLeft*1000000000).String() + "\n" +
+		    "\tshortest\t" + strconv.Itoa(shortest) + "\n" +
+		    " " + strconv.FormatFloat(time.Since(b.TimeStarted).Seconds(), 'f', 0, 64) + "s"
 	})
+	bar.AppendCompleted()
 
 	// Indices without/start/end
 	left := sliceWithoutSrc(src, n)
@@ -77,13 +84,14 @@ func betteExhaustiveSearch(src, n int, dist [][]int) {
 			path = a
 		}
 
-		if bar.Current()%1000 == 0 {
+		// Compute the current computation rate every now and then
+
+		if bar.Current()%100000 == 0 {
 			rate = float64(bar.Current()) / time.Since(bar.TimeStarted).Seconds()
-			// fmt.Println("current paths/s", rate, time.Since(bar.TimeStarted).Seconds())
 		}
 	}
 
-	fmt.Println("shortest path is ", path, "len", shortest," took ",time.Since(bar.TimeStarted))
+	fmt.Println("shortest path is ", path, "len", shortest, " took ", time.Since(bar.TimeStarted))
 }
 
 // This does work, but since all possible paths are generated beforehand
@@ -168,103 +176,4 @@ func permutate(c chan []int, inputs []int) {
 			p[i] = i
 		}
 	}
-}
-
-func permutateParallel(c chan []int, inputs []int) {
-
-	finisher := make(chan bool)
-	for i := 0; i < len(inputs); i++ {
-
-		temp := make([]int, len(inputs)-1)
-		copy(temp, inputs[:i])
-		copy(temp[i:], inputs[i+1:])
-
-		// fmt.Println(temp, i)
-
-		go permutate2(c, temp, inputs[i], finisher)
-	}
-
-	for i := 0; i < len(inputs); i++ {
-		<-finisher
-	}
-
-	return
-}
-func permutate2(c chan []int, inputs []int, first int, finisher chan bool) {
-	output := make([]int, len(inputs))
-	copy(output, inputs)
-	c <- output
-
-	size := len(inputs)
-	p := make([]int, size+1)
-	for i := 0; i < size+1; i++ {
-		p[i] = i
-	}
-	for i := 1; i < size; {
-		p[i]--
-		j := 0
-		if i%2 == 1 {
-			j = p[i]
-		}
-		inputs[j], inputs[i] = inputs[i], inputs[j]
-		output := make([]int, len(inputs)+1)
-		copy(output[1:], inputs)
-		output[0] = first
-		c <- output
-		for i = 1; p[i] == 0; i++ {
-			p[i] = i
-		}
-	}
-	finisher <- true
-}
-func permutate3(c chan []int, inputs []int, first int, dist [][]int) {
-	var path []int
-	var shortest = math.MaxInt32
-
-	d := calcPathDist(inputs, dist)
-	if d < shortest {
-		shortest = d
-		output := make([]int, len(inputs)+1)
-		copy(output[1:], inputs)
-		output[0] = first
-		path = output
-	}
-
-	size := len(inputs)
-	p := make([]int, size+1)
-	for i := 0; i < size+1; i++ {
-		p[i] = i
-	}
-	for i := 1; i < size; {
-		p[i]--
-		j := 0
-		if i%2 == 1 {
-			j = p[i]
-		}
-		inputs[j], inputs[i] = inputs[i], inputs[j]
-
-		d := calcPathDist(inputs, dist)
-		if d < shortest {
-			shortest = d
-			output := make([]int, len(inputs)+1)
-			copy(output[1:], inputs)
-			output[0] = first
-			path = output
-		}
-
-		for i = 1; p[i] == 0; i++ {
-			p[i] = i
-		}
-	}
-
-	c <- path
-}
-
-func parallelPermutations(data []int, buffer int) <-chan []int {
-	c := make(chan []int, buffer)
-	go func(c chan []int) {
-		defer close(c)
-		permutateParallel(c, data)
-	}(c)
-	return c
 }
