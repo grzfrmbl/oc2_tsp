@@ -21,7 +21,9 @@ Usage of ./oc2_tsp:
 ```
  
 ##### Example
-`./oc2_tsp -n 10` 
+
+![example](preview.gif)
+
 
 Runs a TSP problem exhaustive search, 10 cities. Path lengths are set at random [1...1000].
 
