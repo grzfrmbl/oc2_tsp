@@ -39,8 +39,8 @@ func main() {
 	}
 
 	if *data != "" {
-		a := loadTestMatrix(*data)
-		search(0, len(a[0]), a, *fast)
+		d := loadTestMatrix(*data)
+		search(d, *fast)
 
 	} else {
 		if *size == 0 {
@@ -52,7 +52,7 @@ func main() {
 		}
 
 		d := createDistanceMatrix(*size, *seed)
-		search(0, *size, d, *fast)
+		search(d, *fast)
 	}
 }
 
@@ -85,6 +85,8 @@ func calcPathDist(path []int, dist [][]int) int {
 	for i := 0; i < len(path)-1; i++ {
 		d += dist[path[i]][path[i+1]]
 	}
+	d += dist[path[len(path)-1]][0]
+
 	return d
 }
 
