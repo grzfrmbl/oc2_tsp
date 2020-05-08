@@ -170,7 +170,8 @@ func fastExhaustive(n int, dist [][]int) {
 		if c == 10_000_000 {
 			rate = float64(c) / time.Since(start).Seconds()
 			tLeft = float64(fac(n)-c) / rate
-			fmt.Println("estimated time left\t" + time.Duration(tLeft*1000000000).String())
+			fmt.Println("paths/s\t\t\t" + strconv.FormatFloat(rate, 'f', 0, 64) + "\n" +
+			    "estimated time left\t" + time.Duration(tLeft*1000000000).String())
 		}
 
 	}
