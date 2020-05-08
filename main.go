@@ -5,8 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
+	"runtime/pprof"
 	"time"
 )
 
@@ -16,10 +18,23 @@ const (
 )
 
 func main() {
-	testFlag := flag.String("data", "", "Path to predefined distance matrix.")
-	problemSize := flag.Int("n", 0, "Number of cities used.")
+	var (
+		testFlag    = flag.String("data", "", "Path to predefined distance matrix.")
+		problemSize = flag.Int("n", 0, "Number of cities used.")
+		seed        = flag.Int64("seed", 0, "Custom seed for random number generation.")
+		cpuprofile  = flag.String("cpuprofile", "", "write cpu profile to file")
+	)
 
 	flag.Parse()
+
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	if *testFlag != "" {
 		a := loadTestMatrix(*testFlag)
@@ -30,7 +45,11 @@ func main() {
 			panic("please provide the number of cities (-n 5)")
 		}
 
-		d := createDistanceMatrix(*problemSize, time.Now().UnixNano())
+		if *seed == 0 {
+			*seed = time.Now().UnixNano()
+		}
+
+		d := createDistanceMatrix(*problemSize, *seed)
 		betteExhaustiveSearch(0, *problemSize, d)
 	}
 }

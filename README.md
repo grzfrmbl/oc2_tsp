@@ -18,6 +18,8 @@ Usage of ./oc2_tsp:
         Path to predefined distance matrix.
   -n int
         Number of cities used.
+  -seed
+        Custom rand. number generation seed.
 ```
  
 ##### Example

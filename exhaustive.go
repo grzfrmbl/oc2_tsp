@@ -36,8 +36,6 @@ func exhaustiveSearch(src, n int, dist [][]int) {
 func betteExhaustiveSearch(src, n int, dist [][]int) {
 	fmt.Println("better exhaustive search, there are ", fac(n-1), " paths to check \nsearching ...\n")
 
-	// These variables are allocated here to increase performance.
-	// If we do this every iteration the GC strain is quite noticeable.
 	var (
 		path         []int
 		shortest     int = math.MaxInt32
@@ -45,13 +43,16 @@ func betteExhaustiveSearch(src, n int, dist [][]int) {
 		a            = make([]int, n+1)
 		rate         float64
 		tLeft        float64
+		perm         = sliceWithoutSrc(src, n)
+		n_len        = len(perm) - 1
+		i, j, k      int
 	)
 
 	// Uhhh yes a fancy progressbar
+
 	uiprogress.Start()
 	bar := uiprogress.AddBar(fac(n - 1))
 	bar.Width = 42
-	// bar.PrependElapsed()
 	bar.PrependFunc(func(b *uiprogress.Bar) string {
 		tLeft = float64(bar.Total-bar.Current()) / rate
 		return "\tpaths/s\t\t" + strconv.FormatFloat(rate, 'f', 0, 64) + "\n" +
@@ -61,22 +62,38 @@ func betteExhaustiveSearch(src, n int, dist [][]int) {
 	})
 	bar.AppendCompleted()
 
-	// Indices without/start/end
-	left := sliceWithoutSrc(src, n)
+	// Start/End are the same for every path
+	a[0] = src
+	a[n] = src
 
-	for perm := range permutations(left) {
+	for c := 1; c < fac(n-1); c++ {
 		bar.Incr()
 
-		// Make a path
-
-		a[0] = src
-		a[n] = src
-
-		for i := 0; i < len(perm); i++ {
-			a[i+1] = perm[i]
+		// For the sake of performance permutations are generated inline
+		i = n_len - 1
+		j = n_len
+		for perm[i] > perm[i+1] {
+			i--
+		}
+		for perm[j] < perm[i] {
+			j--
+		}
+		perm[i], perm[j] = perm[j], perm[i]
+		j = n_len
+		i += 1
+		for i < j {
+			perm[i], perm[j] = perm[j], perm[i]
+			i++
+			j--
 		}
 
-		// Check it
+		// Squeeze a permutation of the free indices in
+		// start=end=0: 0 - x - x - x 0
+		for k = 0; k < len(perm); k++ {
+			a[k+1] = perm[k]
+		}
+
+		// Check the path
 
 		shortestTemp = calcPathDist(a, dist)
 		if shortestTemp < shortest {
@@ -84,11 +101,13 @@ func betteExhaustiveSearch(src, n int, dist [][]int) {
 			path = a
 		}
 
-		// Compute the current computation rate every now and then
+		// Compute the current computation rate every now and then,
+		// this does slow down everything a bit...
 
 		if bar.Current()%100000 == 0 {
 			rate = float64(bar.Current()) / time.Since(bar.TimeStarted).Seconds()
 		}
+
 	}
 
 	fmt.Println("shortest path is ", path, "len", shortest, " took ", time.Since(bar.TimeStarted))
@@ -142,6 +161,10 @@ func sliceWithoutSrc(v, n int) []int {
 	return left
 
 }
+
+// Based on on the QuickPerm algorithm,
+// unfortunately the overhead of the go runtime mitigate
+// any performance improvements compared to a simple inline heaps algorithm.
 func permutations(data []int) <-chan []int {
 	c := make(chan []int)
 	go func(c chan []int) {
