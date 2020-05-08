@@ -85,7 +85,7 @@ func calcPathDist(path []int, dist [][]int) int {
 	for i := 0; i < len(path)-1; i++ {
 		d += dist[path[i]][path[i+1]]
 	}
-	d += dist[path[len(path)-1]][0]
+	d += dist[path[len(path)-1]][path[0]]
 
 	return d
 }

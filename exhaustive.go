@@ -127,6 +127,7 @@ func fastExhaustive(n int, dist [][]int) {
 		tLeft        float64
 		i, j, k      int
 	)
+	sol := []int{0, 7, 4, 3, 9, 5, 2, 6, 1, 10, 8}
 
 	for i := 0; i < n; i++ {
 		perm = append(perm, i)
@@ -153,13 +154,15 @@ func fastExhaustive(n int, dist [][]int) {
 			j--
 		}
 
+
 		// Check the path
 
 		shortestTemp = 0
 		for k = 0; k < len(path)-1; k++ {
 			shortestTemp += dist[perm[k]][perm[k+1]]
 		}
-		shortestTemp += dist[perm[len(perm)-1]][0]
+		shortestTemp += dist[perm[len(path)-1]][perm[0]]
+
 
 		if shortestTemp < shortest {
 			shortest = shortestTemp
@@ -175,6 +178,8 @@ func fastExhaustive(n int, dist [][]int) {
 		}
 
 	}
+
+	fmt.Println(calcPathDist(sol, dist))
 
 	fmt.Println("shortest path is ", path, "len", shortest, " took ", time.Since(start))
 }
