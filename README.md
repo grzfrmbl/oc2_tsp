@@ -15,11 +15,13 @@ A couple of options are available via cmd flags:
 ```bash
 Usage of ./oc2_tsp:
   -data string
-        Path to predefined distance matrix.
+        Path to a predefined distance matrix.
   -n int
         Number of cities used.
   -seed
         Custom rand. number generation seed.
+  -fast
+        Skip the fancy prints, run fast.
 ```
  
 ##### Example
@@ -31,5 +33,6 @@ Runs a TSP problem exhaustive search, 10 cities. Path lengths are set at random 
 
 ## Test instances
 
-Test data is taken from [here](https://people.sc.fsu.edu/~jburkardt/datasets/tsp/tsp.html) and can be found in the data/ folder.
+Test data is taken from [here](https://people.sc.fsu.edu/~jburkardt/datasets/tsp/tsp.html) and [here](https://stackoverflow.com/questions/11007355/data-for-simple-tsp)
+and can be found in the data/ folder.
 If you want to include data yourself simply convert it to a JSON array of integers. 

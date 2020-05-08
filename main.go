@@ -19,16 +19,18 @@ const (
 
 func main() {
 	var (
-		testFlag    = flag.String("data", "", "Path to predefined distance matrix.")
-		problemSize = flag.Int("n", 0, "Number of cities used.")
-		seed        = flag.Int64("seed", 0, "Custom seed for random number generation.")
-		cpuprofile  = flag.String("cpuprofile", "", "write cpu profile to file")
+		data    = flag.String("data", "", "Path to a predefined distance matrix.")
+		size    = flag.Int("n", 0, "Number of cities used.")
+		fast    = flag.Bool("fast", false, "Skip the fancy prints, run fast.")
+		seed    = flag.Int64("seed", 0, "Custom seed for random number generation.")
+		profile = flag.String("profile", "", "Write cpu profile to file.")
 	)
 
 	flag.Parse()
 
-	if *cpuprofile != "" {
-		f, err := os.Create(*cpuprofile)
+	if *profile != "" {
+		// create a cpu profile for performance debugging...
+		f, err := os.Create(*profile)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -36,12 +38,12 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	if *testFlag != "" {
-		a := loadTestMatrix(*testFlag)
-		betteExhaustiveSearch(0, len(a[0]), a)
+	if *data != "" {
+		a := loadTestMatrix(*data)
+		search(0, len(a[0]), a, *fast)
 
 	} else {
-		if *problemSize == 0 {
+		if *size == 0 {
 			panic("please provide the number of cities (-n 5)")
 		}
 
@@ -49,8 +51,8 @@ func main() {
 			*seed = time.Now().UnixNano()
 		}
 
-		d := createDistanceMatrix(*problemSize, *seed)
-		betteExhaustiveSearch(0, *problemSize, d)
+		d := createDistanceMatrix(*size, *seed)
+		search(0, *size, d, *fast)
 	}
 }
 

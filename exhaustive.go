@@ -32,8 +32,17 @@ func exhaustiveSearch(src, n int, dist [][]int) {
 	fmt.Println("shortest path is ", path, "len", shortest)
 }
 
+func search(src, n int, dist [][]int, fast bool) {
+	if fast {
+		fastExhaustive(src, len(dist[0]), dist)
+	} else {
+		betterExhaustive(src, len(dist[0]), dist)
+	}
+
+}
+
 // Do not preallocate all possible paths, be merciful to your memory.
-func betteExhaustiveSearch(src, n int, dist [][]int) {
+func betterExhaustive(src, n int, dist [][]int) {
 	fmt.Println("better exhaustive search, there are ", fac(n-1), " paths to check \nsearching ...\n")
 
 	var (
@@ -102,8 +111,8 @@ func betteExhaustiveSearch(src, n int, dist [][]int) {
 		}
 
 		// Compute the current computation rate every now and then,
-		// this does slow down everything a bit...
-
+		// this and the progress bar does slow down things
+		// by about 100% ...
 		if bar.Current()%100000 == 0 {
 			rate = float64(bar.Current()) / time.Since(bar.TimeStarted).Seconds()
 		}
@@ -111,6 +120,74 @@ func betteExhaustiveSearch(src, n int, dist [][]int) {
 	}
 
 	fmt.Println("shortest path is ", path, "len", shortest, " took ", time.Since(bar.TimeStarted))
+}
+
+// Fast version of the above, almost no prints or other fancy crap
+func fastExhaustive(src, n int, dist [][]int) {
+	fmt.Println("fast exhaustive search, there are ", fac(n-1), " paths to check \nsearching ...\n")
+
+	var (
+		path         []int
+		shortest     int = math.MaxInt32
+		shortestTemp int
+		a            = make([]int, n+1)
+		rate         float64
+		tLeft        float64
+		perm         = sliceWithoutSrc(src, n)
+		n_len        = len(perm) - 1
+		i, j, k      int
+	)
+
+	// Start/End are the same for every path
+	a[0] = src
+	a[n] = src
+
+	start := time.Now()
+	for c := 1; c < fac(n-1); c++ {
+		// bar.Incr()
+
+		// For the sake of performance permutations are generated inline
+		i = n_len - 1
+		j = n_len
+		for perm[i] > perm[i+1] {
+			i--
+		}
+		for perm[j] < perm[i] {
+			j--
+		}
+		perm[i], perm[j] = perm[j], perm[i]
+		j = n_len
+		i += 1
+		for i < j {
+			perm[i], perm[j] = perm[j], perm[i]
+			i++
+			j--
+		}
+
+		// Squeeze a permutation of the free indices in
+		// start=end=0: 0 - x - x - x 0
+		for k = 0; k < len(perm); k++ {
+			a[k+1] = perm[k]
+		}
+
+		// Check the path
+
+		shortestTemp = calcPathDist(a, dist)
+		if shortestTemp < shortest {
+			shortest = shortestTemp
+			path = a
+		}
+
+		// A little clue about expected time might be helpful...
+		if c == 10_000_000 {
+			rate = float64(c) / time.Since(start).Seconds()
+			tLeft = float64(fac(n-1)-c) / rate
+			fmt.Println("estimated time left\t" + time.Duration(tLeft*1000000000).String())
+		}
+
+	}
+
+	fmt.Println("shortest path is ", path, "len", shortest, " took ", time.Since(start))
 }
 
 // This does work, but since all possible paths are generated beforehand
