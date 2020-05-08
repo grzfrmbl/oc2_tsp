@@ -110,7 +110,32 @@ func betteExhaustiveSearch(src, n int, dist [][]int) {
 
 	}
 
+	exportD(dist)
+	exportPath(path)
+	draw()
+
 	fmt.Println("shortest path is ", path, "len", shortest, " took ", time.Since(bar.TimeStarted))
+}
+
+// Faculty n!
+func fac(n int) (result int) {
+	if n > 0 {
+		result = n * fac(n-1)
+		return result
+	}
+	return 1
+}
+
+func sliceWithoutSrc(v, n int) []int {
+	var left []int
+	for i := 0; i < n; i++ {
+		if i == v {
+			continue
+		}
+		left = append(left, i)
+	}
+	return left
+
 }
 
 // This does work, but since all possible paths are generated beforehand
@@ -141,25 +166,6 @@ func genPermutations(start int, n int) [][]int {
 		tmp++
 	}
 	return a
-}
-
-func fac(n int) (result int) {
-	if n > 0 {
-		result = n * fac(n-1)
-		return result
-	}
-	return 1
-}
-func sliceWithoutSrc(v, n int) []int {
-	var left []int
-	for i := 0; i < n; i++ {
-		if i == v {
-			continue
-		}
-		left = append(left, i)
-	}
-	return left
-
 }
 
 // Based on on the QuickPerm algorithm,
